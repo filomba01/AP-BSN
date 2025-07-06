@@ -1,11 +1,12 @@
 import argparse, os
 import multiprocessing as mp
 from importlib import import_module
+import sys
 
-
+# Add the current directory to Python path so we can import src modules
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.datahandler import get_dataset_class
-
 
 def main():
     # parsing configuration

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ap-bsn"
+version = "0.1.0"
+description = "AP-BSN: Attention-Powered Blind Spot Networks for Image Denoising"
+authors = [{name = "AP-BSN Team"}]
+requires-python = ">=3.8"
+dependencies = [
+    "torch",
+    "numpy", 
+    "opencv-python",
+    "scikit-image",
+    "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"] 

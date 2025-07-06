@@ -7,28 +7,55 @@ from . import regist_dataset
 
 
 @regist_dataset
-class CustomSample(DenoiseDataSet):
+class SatelliteImages(DenoiseDataSet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def _scan(self):
-        # check if the dataset exists
-        dataset_path = os.path.join('WRITE_YOUR_DATASET_DIRECTORY')
+        # Use the standard dataset directory structure
+        dataset_path = os.path.join(self.dataset_dir, 'SatelliteImages')
         assert os.path.exists(dataset_path), 'There is no dataset %s'%dataset_path
 
-        # WRITE YOUR CODE FOR SCANNING DATA
-        # example:
-        for root, _, files in os.walk(dataset_path):
-            for file_name in files:
-                self.img_paths.append(os.path.join(root, file_name))
+        # Scan for PNG files in the dataset directory
+        self.img_paths = []
+        for file_name in os.listdir(dataset_path):
+            if file_name.lower().endswith('.png'):
+                self.img_paths.append(file_name)
+        
+        print(f"Found {len(self.img_paths)} PNG images in {dataset_path}")
+        for img_path in self.img_paths:
+            print(f"  - {img_path}")
 
     def _load_data(self, data_idx):
-        # WRITE YOUR CODE FOR LOADING DATA FROM DATA INDEX
-        # example:
+        # Load clean satellite images (no paired noisy images available)
+        file_name = self.img_paths[data_idx]
+        dataset_path = os.path.join(self.dataset_dir, 'SatelliteImages')
+        
+        clean_img = self._load_img(os.path.join(dataset_path, file_name))
+
+        return {'clean': clean_img}  # only clean image dataset
+
+
+@regist_dataset
+class prep_SatelliteImages(DenoiseDataSet):
+    '''
+    dataset class for prepared satellite images which are cropped with overlap.
+    '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _scan(self):
+        self.dataset_path = os.path.join(self.dataset_dir, 'prep/SatelliteImages_s512_o128')
+        assert os.path.exists(self.dataset_path), 'There is no dataset %s'%self.dataset_path
+        
+        clean_path = os.path.join(self.dataset_path, 'CL')
+        if os.path.exists(clean_path):
+            for root, _, files in os.walk(clean_path):
+                self.img_paths = [f for f in files if f.lower().endswith('.png')]
+
+    def _load_data(self, data_idx):
         file_name = self.img_paths[data_idx]
 
-        noisy_img = self._load_img(os.path.join(self.dataset_path, 'RN' , file_name))
-        clean_img = self._load_img(os.path.join(self.dataset_path, 'CL' , file_name))
+        clean_img = self._load_img(os.path.join(self.dataset_path, 'CL', file_name))
 
-        return {'clean': clean_img, 'real_noisy': noisy_img} # paired dataset
-        # return {'real_noisy': noisy_img} # only noisy image dataset
+        return {'clean': clean_img}

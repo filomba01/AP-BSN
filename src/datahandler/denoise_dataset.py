@@ -270,6 +270,37 @@ class DenoiseDataSet(Dataset):
             het_gau_std = (clean_img * (opt[0]**2) + torch.ones(clean_img.shape) * (opt[1]**2)).sqrt()
             nlf = het_gau_std
             synthesized_img = clean_img + torch.normal(mean=0., std=nlf)
+        elif add_noise_type == 'sentinel2':
+            # opt[0]: photon scale factor
+            # opt[1]: noise boost factor (optional, default 1.0)
+            photon_scale = opt[0]
+            noise_boost = opt[1] if len(opt) > 1 else 1.0
+            clamp
+            # Normalize to [0, 1] range (assuming 8-bit images)
+            image_rgb_float = clean_img.float() / 255.0
+
+            # Sentinel-2 band-specific SNRs (R, G, B = B04, B03, B02)
+            snrs = torch.tensor([230, 249, 214], dtype=torch.float32)
+
+            # Add Poisson noise
+            poisson = torch.poisson(image_rgb_float * photon_scale) / photon_scale
+
+            # Add Gaussian noise for each band based on the avg pixel value for that band
+            avg_per_band = torch.mean(image_rgb_float, dim=(1, 2))  # Average across spatial dimensions
+            std_dev = avg_per_band / snrs
+            
+            # Expand std_dev to match image dimensions for broadcasting
+            std_dev_expanded = std_dev.view(-1, 1, 1) * noise_boost
+            gaussian = torch.normal(0, std_dev_expanded.expand_as(image_rgb_float))
+            
+            # Combine noises
+            noisy = poisson + gaussian
+            
+            # Scale back to [0, 255] range
+            synthesized_img = noisy * 255.0
+            
+            # Set nlf as the average standard deviation across bands (scaled to [0,255])
+            nlf = torch.mean(std_dev * noise_boost).item() * 255.0
         else:
             raise RuntimeError('undefined additive noise type : %s'%add_noise_type)
 
