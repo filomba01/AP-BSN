@@ -1,5 +1,8 @@
 torch
 numpy
-opencv-python
+opencv-python-headless
 scikit-image
 scipy
+PyYAML
+tensorboard
+h5py
