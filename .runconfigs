@@ -1,5 +1,5 @@
 # Docker run options
-docker_args: -v ~/ADL/AP-BSN/dataset:/exp/dataset -v ~/ADL/AP-BSN/storage/ckpt:/exp/ckpt
+docker_args: -v ~/ADL/AP-BSN/dataset:/exp/dataset -v ~/ADL/AP-BSN/storage/ckpt:/exp/ckpt -v ~/ADL/AP-BSN/storage/output:/exp/output
 container_name: balzarini_ap-bsn_ev_GPU{args.gpu}_CPU{args.cpu}_{date}
 
 # Specify the Docker image to use

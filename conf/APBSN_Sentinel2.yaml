@@ -17,9 +17,10 @@ model_input: [noisy] # The model will receive the synthesized noisy image
 trainer: Trainer
 
 training:
-  dataset: prep_SatelliteImages
+  dataset: prep_SatelliteImages  # use dataset class name
 
   dataset_args:
+    split: train
     add_noise: sentinel2-1000:10  # photon_scale=1000, noise_boost=10
     crop_size: [120, 120]
     aug: ['hflip', 'rot']
@@ -45,12 +46,12 @@ training:
   warmup_iter: 200
 
 validation:
-  dataset: prep_SatelliteImages
+  dataset: prep_SatelliteImages  # use same class for validation
 
   dataset_args:
-    crop_size: None
+    split: val
+    crop_size: [120, 120]  # Same as training for consistency
     add_noise: sentinel2-1000:10  # Same noise for consistency
-    n_data: 32
 
   add_con: 0.5
   floor: True
@@ -69,10 +70,11 @@ log:
   interval_iter: 10
 
 test:
-  dataset: prep_SatelliteImages
+  dataset: prep_SatelliteImages  # use same class for testing
 
   dataset_args:
-    crop_size: None
+    split: test
+    crop_size: [120, 120]  # Consistent with training/validation
     add_noise: sentinel2-1000:10
 
   add_con: 0.0
