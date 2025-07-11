@@ -1,0 +1,9 @@
+# Docker run options
+docker_args: -v ~/ADL/AP-BSN/dataset:/exp/dataset -v ~/ADL/AP-BSN/storage/ckpt:/exp/ckpt
+container_name: balzarini_ap-bsn_ev_GPU{args.gpu}_CPU{args.cpu}_{date}
+
+# Specify the Docker image to use
+image_name: balzarini/ap-bsn:v1
+
+
+# /home/balzarini/TABgen/TabSynExp/mostly
