@@ -178,7 +178,13 @@ def ssim(img1, img2):
     img2 = np.clip(img2, 0, 255)
     img1 = np.clip(img1, 0, 255)
 
-    return structural_similarity(img1, img2, multichannel=True, data_range=255)
+    # Use channel_axis for newer scikit-image versions (0.19.0+)
+    # For backward compatibility, fall back to multichannel for older versions
+    try:
+        return structural_similarity(img1, img2, channel_axis=-1, data_range=255)
+    except TypeError:
+        # Fallback for older scikit-image versions
+        return structural_similarity(img1, img2, multichannel=True, data_range=255)
 
 def get_gaussian_2d_filter(window_size, sigma, channel=1, device=torch.device('cpu')):
     '''
