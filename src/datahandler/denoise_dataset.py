@@ -5,7 +5,7 @@ import numpy as np
 from scipy.io import savemat
 import torch
 from torch.utils.data import Dataset
-
+import torch.nn.function as F
 
 from ..util.util import rot_hflip_img, tensor2np, np2tensor, mean_conv2d
 
@@ -213,7 +213,7 @@ class DenoiseDataSet(Dataset):
 
     def _parse_add_noise(self, add_noise_str:str):
         '''
-        noise_type-opt0:opt1:opt2-clamp
+        noise_type-opt0:opt1:opt2:opt3:opt4-clamp
         '''
         if add_noise_str == 'bypass':
             return 'bypass', None, None
@@ -224,6 +224,31 @@ class DenoiseDataSet(Dataset):
             return add_noise_type, add_noise_opt, add_noise_clamp
         else:
             return None, None, None
+
+    def custom_gkernel(self, edge:int=3, sigma:float=1.) -> torch.Tensor:
+        """
+        Custom function that generates a 2D Gaussian kernel.
+        
+        Args:
+            - edge (int): Dimension of the kernel's edge (default=3)
+            - sigma (float): Standard deviation of the kernel (default=1.)
+        
+        Returns:
+            - kernel (torch.Tensor): The Gaussian kernel
+        """
+        # Generate axis values
+        ax = torch.linspace(-(edge - 1) / 2., (edge - 1) / 2., edge)
+
+        # Create the 1D Gaussian distribution
+        gauss = torch.exp(-0.5 * (ax / sigma).pow(2))
+
+        # Create the 2D Gaussian kernel using the outer product
+        kernel = torch.outer(gauss, gauss)
+
+        # Normalize the kernel to ensure it sums to 1
+        kernel /= kernel.sum()
+
+        return kernel
 
     def _add_noise(self, clean_img:torch.Tensor, add_noise_type:str, opt:list, clamp:bool=False) -> torch.Tensor:
         '''
@@ -242,6 +267,7 @@ class DenoiseDataSet(Dataset):
             - gau_blind : blind gaussian distribution with zero-mean, variance is uniformly selected from opt[0] ~ opt[1]
             - struc_gau : structured gaussian noise. gaussian filter is applied to above gaussian noise. opt[0] is variance of gaussian, opt[1] is window size and opt[2] is sigma of gaussian filter.
             - het_gau : heteroscedastic gaussian noise with indep weight:opt[0], dep weight:opt[1]
+            - sentinel2 : noise model for Sentinel-2 images
         '''
         nlf = None
 
@@ -273,8 +299,14 @@ class DenoiseDataSet(Dataset):
         elif add_noise_type == 'sentinel2':
             # opt[0]: photon scale factor
             # opt[1]: noise boost factor (optional, default 1.0)
+            # opt[2]: correlate flag
+
             photon_scale = opt[0]
             noise_boost = opt[1] if len(opt) > 1 else 1.0
+            correlate = opt[2] if len(opt) > 2 else False
+            kernel_edge = opt[3] if len(opt) > 3 else 3  # edge size for Gaussian kernel
+            kernel_sigma = opt[4] if len(opt) > 4 else 1.0
+
             clamp
             # Normalize to [0, 1] range (assuming 8-bit images)
             image_rgb_float = clean_img.float() / 255.0
@@ -292,7 +324,14 @@ class DenoiseDataSet(Dataset):
             # Expand std_dev to match image dimensions for broadcasting
             std_dev_expanded = std_dev.view(-1, 1, 1) * noise_boost
             gaussian = torch.normal(0, std_dev_expanded.expand_as(image_rgb_float))
-            
+
+            if correlate:
+                correlated_gaussian = torch.zeros_like(gaussian)
+                kernel = self.custom_gkernel(kernel_edge, kernel_sigma)
+                for c in range(gaussian.shape[0]):
+                    correlated_gaussian[c] = F.conv2d(gaussian[c].unsqueeze(0), kernel.unsqueeze(0).unsqueeze(0), padding="same").squeeze(0)
+                gaussian = correlated_gaussian
+
             # Combine noises
             noisy = poisson + gaussian
             
